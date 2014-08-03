@@ -1,0 +1,36 @@
+/* Some common alied classes */
+
+/* float */
+.fl {
+	float: left;
+}
+.fr {
+	float: right;
+}
+
+
+/* display */
+.dib {
+	display: inline-block;
+}
+.di {
+	display: inline;
+}
+.db {
+	display: block;
+}
+.hide {
+	display: none;
+}
+
+
+/* width */
+.w100 {
+	width: 100%;
+}
+
+/* Padding */
+.p10 {
+	padding: 10px;
+}
+

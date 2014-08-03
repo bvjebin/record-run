@@ -1,0 +1,37 @@
+<!doctype html>
+<html>
+	<head>
+		<title>Record & Run</title>
+		<link rel="stylesheet" href="/assets/stylesheets/vendor/normalize.css">
+		<link rel="stylesheet" href="/assets/stylesheets/commons.css">
+		<link rel="stylesheet" href="/assets/stylesheets/main.css">
+	</head>
+	<body>
+		<header>
+			<div class="logo dib">Record & Run</div>
+			<div class="record-run fr p10">
+				<button type="button" class="record">Record</button>
+				<button type="button" class="run">Run</button>
+			</div>
+		</header>
+		<div id="canvas">
+			<div class="left">Hello Boss1</div>
+            <div class="middle">Hello Boss2</div>
+            <div class="right">Hello Boss3</div>
+            <div class="left">Hello Boss4</div>
+            <div class="middle">Hello Boss5</div>
+            <div class="right">Hello Boss6</div>
+		</div>
+        <div id="notify"></div>
+		<footer>@copyrights reserved by BVJEBIN</footer>
+		<script type="text/javascript" src="record-run.js"></script>
+		<div id="cursor"></div>
+        <script type="text/javascript">
+            for(var k = 0; k < document.querySelectorAll("#canvas > div").length; k++ ) {
+                document.querySelectorAll("#canvas > div")[k].addEventListener("click", function(e) {
+                    document.getElementById("notify").innerHTML = e.target.innerText;
+                });
+            }
+        </script>
+	</body>
+</html>
