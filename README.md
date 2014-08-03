@@ -14,6 +14,8 @@ Basic example given in the repo works fine in chrome.
 
 Only click events are handled now. Key board events will be handle in the upcoming releases.
 
-Contributions are always welcome. Please let me know if you are willing to contribute.
+Contributions are always welcome. Contact me if you are willing to contribute.
+
+Thanks to [unique-selector](https://github.com/ericclemmons/unique-selector) for the wonderful piece of code which made my work easier. 
 
 Contact me @ bvjebin@gmail.com
