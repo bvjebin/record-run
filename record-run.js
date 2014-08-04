@@ -212,20 +212,25 @@
             showSuccessNotification: function() {
                 var notiBox = document.getElementById("record-run-noty-box");
                 if(!notiBox) {
-                    var box = document.createElement("div");
-                    box.id = "record-run-noty-box";
-                    box.style.display = "none";
-                    box.style.position = "fixed";
-                    box.style.width = "200px";
-                    box.style.background = "rgb(14, 186, 94)";
-                    box.style.top = "20px";
-                    box.style.right = "20px";
-                    box.style.border = "1px solid rgb(19, 169, 53)";
-                    box.style.height = "50px";
-                    box.style.padding = "12px";
-                    box.style.textAlign = "center";
-                    box.style.color = "rgb(251, 254, 251)";
-                    box.innerHTML = "Ran Successfully!";
+                    var boxOption = {
+                        tagName: "div",
+                        id: "record-run-noty-box",
+                        html: "Ran Successfully!",
+                        style: {
+                            display: "none",
+                            position: "fixed",
+                            width: "200px",
+                            background: "rgb(14, 186, 94)",
+                            top: "20px",
+                            right: "20px",
+                            border: "1px solid rgb(19, 169, 53)",
+                            height: "50px",
+                            padding: "12px",
+                            textAlign: "center",
+                            color: "rgb(251, 254, 251)"
+                        }
+                    };
+                    var box = this.createElement(boxOption);
                     document.body.appendChild(box);
                     box.style.display = "block";
                     box.style.cursor = "pointer";
@@ -304,6 +309,20 @@
                 isEmpty: function() {
                     return this.queue.length ? false : true;
                 }
+            },
+
+            createElement: function(options) {
+                var tagName = options.tagName || "div",
+                    id = options.id || "",
+                    styles = options.style || {},
+                    html = options.html || "";
+                var box = document.createElement(tagName);
+                box.id = id;
+                box.innerHTML = html;
+                for(var style in styles) {
+                    box.style[style] = styles[style];
+                }
+                return box;
             }
         };
 
