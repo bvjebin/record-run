@@ -1,29 +1,67 @@
 "use strict";
 (function() {
-    window.actions = [];
     var storageAvailable = false;
     if(window.localStorage) {
         storageAvailable = true;
     }
-	document.querySelector(".record").addEventListener("click", function(e) {
-        e.stopPropagation();
-        Record();
-	}, false);
-	document.querySelector(".run").addEventListener("click", function(e) {
-        e.stopPropagation();
-        if(Record.stopRecord) Record.stopRecord();
-		Run();
-	}, false);
+    InsertRecordRun();
+    bindButtonEvents();
+
+    function InsertRecordRun() {
+        var styleElement, rule, dom = document.createElement("div");
+        dom.id = "record-run-button-panel";
+        document.querySelector("body").appendChild(dom);
+        dom.setAttribute("draggable", true);
+        dom.addEventListener("drag", function(e) {
+            e.target.style.left = e.pageX;
+            e.target.style.top = e.pageY;
+        });
+
+        styleElement = document.createElement("style");
+        document.head.appendChild(styleElement);
+        rule = "#record-run-button-panel { box-shadow: 0px 0px 20px 5px #111; position: fixed; top: 15px; right: 0px; z-index: 999999; padding: 10px; margin: 5px; background: #fff;}";
+        rule += ".record-run-button { color: #fff; border: 0; }";
+        rule += ".record-run-button.record { background: #2980b9; }\n";
+        rule += ".record-run-button.run { background: #27ae60; }\n";
+        rule += ".record-run-button.stop { background: #e74c3c; }\n";
+
+        styleElement.type = 'text/css';
+
+        if (styleElement.styleSheet) {
+            styleElement.styleSheet.cssText = rule;
+        } else {
+            styleElement.appendChild(document.createTextNode(rule));
+        }
+        dom.innerHTML = '<button type="button" class="record record-run-button">Record</button><button type="button" class="record-run-button run">Run</button>';
+    }
+
+    function bindButtonEvents() {
+        var buttons = document.querySelectorAll(".record-run-button");
+        for(var k = 0; k < buttons.length; k++) {
+            buttons[k].addEventListener("click", function(e) {
+                var text = e.target.innerHTML.toLowerCase();
+                e.stopPropagation();
+                if(text == "record") {
+                    Record();
+                } else if(text == "stop") {
+                    if(Record.stopRecord) Record.stopRecord();
+                } else if(text == "run") {
+                    Run();
+                }
+            }, false);
+        }
+    }
 
     function Record() {
-        window.actions = [];
-        var action, isRecording = false;
+        var actions = [], action, isRecording = false;
 
         var uniqueQuerySelector = function(el) {
 
             if (!el || !el.tagName) {
                 throw new TypeError('Element expected');
             }
+
+            var discardList = ["open"];
 
             function selectors(el) {
                 var parts = [];
@@ -39,12 +77,21 @@
                         label = '#' + el.id;
                     } else {
                         // Otherwise, use tag name
-                        label     = el.tagName.toLowerCase();
-                        var className = el.getAttribute('class');
+                        label = el.tagName.toLowerCase();
+                        var className = (el.getAttribute("class") || []);
 
                         // Tag names could use classes for specificity
+                        var classes = [];
                         if (className && className.length) {
-                            label += '.' + className.split(' ').join('.');
+                            className = className.split(" ");
+                            if(className.length > 1) {
+                                className.forEach(function(item) {
+                                    if(item && item.indexOf(discardList) < 0) classes.push(item);
+                                });
+                            } else {
+                                classes = className;
+                            }
+                            label += '.' + classes.join('.');
                         }
                     }
 
@@ -76,7 +123,7 @@
             var matches   = document.querySelectorAll(selector);
 
             // If selector is not unique enough (wow!), then
-            // force the `nth-child` pseido selector
+            // force the `nth-child` pseudo selector
             if (matches.length > 1) {
                 for (var i = 0; i < matches.length; i++) {
                     if (el === matches[i]) {
@@ -122,15 +169,24 @@
         };
 
         Record.startRecord = function() {
+            var recordButton = document.querySelector(".record.record-run-button");
             isRecording = true;
-            document.querySelector("body").classList.add("recordMode");
+            recordButton.classList.remove("record");
+            recordButton.classList.add("stop");
+            recordButton.innerHTML = "Stop";
             document.addEventListener("click", clickEvent);
         };
 
         Record.stopRecord = function() {
+            var recordButton = document.querySelector(".stop.record-run-button");
             isRecording = false;
-            document.querySelector("body").classList.remove("recordMode");
+            recordButton.classList.remove("stop");
+            recordButton.classList.add("record");
+            recordButton.innerHTML = "Record";
             document.removeEventListener("click", clickEvent);
+            if(storageAvailable) {
+                localStorage.setItem('record-run', JSON.stringify(actions));
+            }
         };
 
         if(isRecording !== true) {
@@ -139,10 +195,10 @@
     }
 
     function Run() {
-        var runActions = JSON.parse(JSON.stringify(actions));
+        var runActions = JSON.parse(localStorage.getItem('record-run'));
 
-        if(!actions.length) {
-            //TODO: Noty show no actions to run
+        if(!runActions.length) {
+            this.showNotification("No action recorded!", "failed");
             return;
         }
 
@@ -156,19 +212,18 @@
 
             highlighterNode: "",
 
-            init: function() {
+            init: function () {
                 document.querySelector("body").classList.add("runMode");
                 this.insertHighlighter();
                 this.nextRun();
             },
 
-            insertHighlighter: function() {
+            insertHighlighter: function () {
                 var highlighter = document.getElementById(this.highlighter);
-                if(!highlighter) {
+                if (!highlighter) {
                     var rule = "", style = document.createElement("style");
                     style.appendChild(document.createTextNode(""));
                     document.head.appendChild(style);
-                    //din't work for some reason so commented
                     rule += "@keyframes ripple-record-run { 100%{ opacity:0; transform: scale(2.5); } }\n";
                     rule += ".ripple-record-run-animate-effect { animation: ripple-record-run 0.65s linear; -webkit-animation: ripple-record-run 0.65s linear; } \n";
                     rule += "@-webkit-keyframes ripple-record-run { 100%{opacity:0;-webkit-transform: scale(2.5);}} ";
@@ -180,51 +235,59 @@
                         style.appendChild(document.createTextNode(rule));
                     }
 
-                    var highlighter = document.createElement("div");
+                    highlighter = document.createElement("div");
                     highlighter.id = this.highlighter;
                     highlighter.style.display = "none";
                     highlighter.style.position = "fixed";
-                    highlighter.style.background =  "rgba(255,255,255,.075)";
+                    highlighter.style.background = "rgba(0,0,0,.075)";
                     highlighter.style.borderRadius = "50%";
                     highlighter.style.transform = "scale(0)";
                     highlighter.style['-webkit-transform'] = "scale(0)";
                     document.querySelector("body").appendChild(highlighter);
                 }
-                this.highlighterNode =  highlighter;
+                this.highlighterNode = highlighter;
             },
 
-            nextRun: function() {
+            nextRun: function () {
                 var item = this.queue.getItem(), selector = Object.keys(item)[0];
                 this.run(selector, item[selector]);
             },
 
-            success: function() {
+            success: function () {
                 this.counter = 0;
                 this.queue.pop();
-                if(this.queue.isEmpty() === false) {
+                if (this.queue.isEmpty() === false) {
                     this.nextRun();
                 } else {
-                    this.showSuccessNotification();
+                    this.showNotification("Ran Successfully!", "success");
                 }
             },
 
-            //TODO: convert it to generic noty
-            showSuccessNotification: function() {
-                var notiBox = document.getElementById("record-run-noty-box");
-                if(!notiBox) {
+            showNotification: function (msg, status) {
+                var notiBox = document.getElementById("record-run-noty-box"), background;
+                if (!notiBox) {
+                    if(status == "success") {
+                        background = "#2ecc71";
+                    } else if(status == "failed") {
+                        background = "#e74c3c";
+                    } else if(status == "info") {
+                        background = "#2980b9";
+                    } else if(status == "warn") {
+                        background = "#f39c12";
+                    }
                     var boxOption = {
                         tagName: "div",
                         id: "record-run-noty-box",
-                        html: "Ran Successfully!",
+                        html: msg,
                         style: {
                             display: "none",
                             position: "fixed",
                             width: "200px",
-                            background: "rgb(14, 186, 94)",
-                            top: "20px",
+                            background: background,
+                            top: "150px",
                             right: "20px",
                             border: "1px solid rgb(19, 169, 53)",
-                            height: "50px",
+                            minHeight: "20px",
                             padding: "12px",
                             textAlign: "center",
                             color: "rgb(251, 254, 251)"
@@ -234,60 +297,65 @@
                     document.body.appendChild(box);
                     box.style.display = "block";
                     box.style.cursor = "pointer";
-                    box.addEventListener("click", function(e) {
+                    box.addEventListener("click", function () {
                         box.style.display = "none";
                     });
                     notiBox = box;
                 } else {
                     notiBox.style.display = "block";
                 }
-                setTimeout(function() {
+                setTimeout(function () {
                     notiBox.style.display = "none";
                 }, 5000);
             },
 
-            count: function() {
+            count: function () {
                 this.counter++;
-                if(this.counter == 5) {
-                    this.countExceeded  = true;
+                if (this.counter == 5) {
+                    this.countExceeded = true;
                 }
             },
 
-            run: function(selector, event) {
+            run: function (selector, event) {
                 var _this = this;
                 var selector = document.querySelector(selector);
-                if(selector != null) {
+                if (selector != null) {
                     selector.scrollIntoView();
                     var mEvent = document.createEvent("MouseEvent");
                     mEvent.initMouseEvent(event.type, true, true, window, 0, 0, 0, 0, 0, false, false, false, false, 0, null);
                     selector.dispatchEvent(mEvent);
                     this.highlightPoint(selector, event);
-                    setTimeout(function() {
+                    setTimeout(function () {
                         _this.success();
                     }, 1000);
-
                 } else {
-                    if(this.countExceeded === false) {
-                        setTimeout(function() {
+                    if (this.countExceeded === false) {
+                        setTimeout(function () {
+                            this.showNotification(this.counter + " - Try to find element!", "info");
                             _this.run(selector, event);
                         }, 1000);
                         this.count();
                     } else {
-                        //TODO: change to noty
-                        alert("Unable to find element.");
+                        this.showNotification("Unable to find the element!", "failed");
                     }
                 }
             },
 
-            highlightPoint: function(node, event) {
-                var _this = this
-                if(this.highlighterNode) {
+            highlightPoint: function (node, event) {
+                var _this = this, position;
+                if (this.highlighterNode) {
                     this.highlighterNode.style.height = this.highlighterNode.style.width = "100px";
-                    this.highlighterNode.style.top = -(window.pageYOffset - node.offsetTop) + event.elementY - 50 + 'px';
-                    this.highlighterNode.style.left = -(window.pageXOffset - node.offsetLeft) + event.elementX - 50 + 'px';
+                    position = window.getComputedStyle(node, null).getPropertyValue("position");
+                    if(position == "fixed") {
+                        this.highlighterNode.style.top = event.clientY - 50 + 'px';
+                        this.highlighterNode.style.left = event.clientX - 50 + 'px';
+                    } else {
+                        this.highlighterNode.style.top = -(window.pageYOffset - node.offsetTop) + event.elementY - 50 + 'px';
+                        this.highlighterNode.style.left = -(window.pageXOffset - node.offsetLeft) + event.elementX - 50 + 'px';
+                    }
                     this.highlighterNode.style.display = "block";
                     this.highlighterNode.classList.add("ripple-record-run-animate-effect");
-                    setTimeout(function() {
+                    setTimeout(function () {
                         _this.highlighterNode.style.display = "none";
                         _this.highlighterNode.classList.remove("ripple-record-run-animate-effect");
                     }, 500);
@@ -298,20 +366,20 @@
 
                 queue: runActions,
 
-                pop: function() {
+                pop: function () {
                     this.queue.splice(0, 1);
                 },
 
-                getItem: function() {
+                getItem: function () {
                     return this.queue[0] || null;
                 },
 
-                isEmpty: function() {
+                isEmpty: function () {
                     return this.queue.length ? false : true;
                 }
             },
 
-            createElement: function(options) {
+            createElement: function (options) {
                 var tagName = options.tagName || "div",
                     id = options.id || "",
                     styles = options.style || {},
@@ -319,8 +387,8 @@
                 var box = document.createElement(tagName);
                 box.id = id;
                 box.innerHTML = html;
-                for(var style in styles) {
-                    box.style[style] = styles[style];
+                for (var prop in styles) {
+                    box.style[prop] = styles[prop];
                 }
                 return box;
             }
