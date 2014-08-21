@@ -331,7 +331,7 @@
                 } else {
                     if (this.countExceeded === false) {
                         setTimeout(function () {
-                            this.showNotification(this.counter + " - Try to find element!", "info");
+                            _this.showNotification(_this.counter + " - Try to find element!", "info");
                             _this.run(selector, event);
                         }, 1000);
                         this.count();
