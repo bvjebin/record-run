@@ -1,5 +1,6 @@
 "use strict";
 (function() {
+    //throw("test keyup and blur");
     var storageAvailable = false;
     if(window.localStorage) {
         storageAvailable = true;
@@ -53,7 +54,7 @@
     }
 
     function Record() {
-        var actions = [], action, isRecording = false;
+        var actions = [], action, isRecording = false, formElements = ["input", "select", "textarea"];
 
         var uniqueQuerySelector = function(el) {
 
@@ -139,9 +140,41 @@
             return selector;
         };
 
-        function clickEvent(e) {
-            var selector = uniqueQuerySelector(e.target);
-            Record.record(selector, e);
+        function clickEventHandler(e) {
+            if(formElements.indexOf(e.target.tagName.toLowerCase()) < 0) {
+                var selector = uniqueQuerySelector(e.target);
+                Record.record(selector, e);
+            }
+        }
+
+        function keyUpEventHandler(e) {
+            if(formElements.indexOf(e.target.tagName.toLowerCase()) < 0) {
+                var selector = uniqueQuerySelector(e.target);
+                Record.record(selector, e);
+            }
+        }
+
+        function blurEventHandler(e) {
+            if(["input", "textarea"].indexOf(e.target.tagName.toLowerCase()) > -1) {
+                var selector = uniqueQuerySelector(e.target);
+                e.value = e.target.value;
+                Record.record(selector, e);
+            }
+        }
+
+        function changeEventHandler(e) {
+            if(["input", "select"].indexOf(e.target.tagName.toLowerCase()) > -1) {
+                if(e.target.tagName.toLowerCase() == "input" && e.target.type == "text") {
+                    return;
+                }
+                var selector = uniqueQuerySelector(e.target);
+                if(e.target.tagName.toLowerCase() == "select") {
+                    e.value = e.target.options[e.target.selectedIndex].value;
+                } else if(e.target.type == "radio" || e.target.type == "checkbox") {
+                    e.value = e.target.checked;
+                }
+                Record.record(selector, e);
+            }
         }
 
         Record.record = function(selector, event) {
@@ -161,9 +194,11 @@
                 screenY: event.screenY,
                 type: event.type,
                 which: event.which,
+                value: event.value,
                 elementY: (event.pageY - event.target.offsetTop),
                 elementX: (event.pageX - event.target.offsetLeft)
             };
+            
             action[selector] = eventHash;
             actions.push(action);
         };
@@ -174,7 +209,14 @@
             recordButton.classList.remove("record");
             recordButton.classList.add("stop");
             recordButton.innerHTML = "Stop";
-            document.addEventListener("click", clickEvent);
+
+            document.addEventListener("click", clickEventHandler);
+
+            document.addEventListener("keyup", keyUpEventHandler);
+
+            document.addEventListener("blur", blurEventHandler, true);
+
+            document.addEventListener("change", changeEventHandler, true);
         };
 
         Record.stopRecord = function() {
@@ -183,7 +225,10 @@
             recordButton.classList.remove("stop");
             recordButton.classList.add("record");
             recordButton.innerHTML = "Record";
-            document.removeEventListener("click", clickEvent);
+            document.removeEventListener("click", clickEventHandler);
+            document.removeEventListener("keyup", keyUpEventHandler);
+            document.removeEventListener("blur", blurEventHandler);
+            document.removeEventListener("change", changeEventHandler);
             if(storageAvailable) {
                 localStorage.setItem('record-run', JSON.stringify(actions));
             }
@@ -321,10 +366,7 @@
                 var selector = document.querySelector(selector);
                 if (selector != null) {
                     selector.scrollIntoView();
-                    var mEvent = document.createEvent("MouseEvent");
-                    mEvent.initMouseEvent(event.type, true, true, window, 0, 0, 0, 0, 0, false, false, false, false, 0, null);
-                    selector.dispatchEvent(mEvent);
-                    this.highlightPoint(selector, event);
+                    this.eventDispatchManager(selector, event);
                     setTimeout(function () {
                         _this.success();
                     }, 1000);
@@ -391,6 +433,42 @@
                     box.style[prop] = styles[prop];
                 }
                 return box;
+            },
+
+            eventDispatchManager: function(selector, event) {
+                var mEvent;
+                if(event.type === "click") {
+                    this.highlightPoint(selector, event);
+                    mEvent = document.createEvent("MouseEvent");
+                    mEvent.initMouseEvent(event.type, true, true, window, 0, 0, 0, 0, 0, false, false, false, false, 0, null);
+                    selector.dispatchEvent(mEvent);
+                } else if(event.type == "keyup") {
+                    mEvent = document.createEvent("KeyboardEvent");
+                    mEvent.which = event.which;
+                    selector.fireEvent("onkeyup", mEvent);
+                    //mEvent.initMouseEvent(event.type, true, true, window, 0, 0, 0, 0, 0, false, false, false, false, 0, null);
+                    //selector.dispatchEvent(mEvent);
+                } else if(event.type == "blur") { //input type text
+                    selector.value = event.value;
+                } else if(event.type == "change") { //select, input radio, input checkbox
+                    var tagName = selector.tagName.toLowerCase();
+                    if(tagName == "select") {
+                        selector.querySelector("option[value='"+event.value+"']").setAttribute("selected", "true");
+                    } else {
+                        if(selector.getAttribute("type") == "radio") {
+                            selector.setAttribute("checked", true);
+                        } else { //checkbox
+                            if(event.value === true) {
+                                selector.checked = event.value;
+                            } else {
+                                selector.removeAttribute("checked");
+                            }
+                        }
+                    }
+                    mEvent = document.createEvent("HTMLEvents");
+                    mEvent.initEvent("change", false, true);
+                    selector.dispatchEvent(mEvent);
+                }
             }
         };
 
